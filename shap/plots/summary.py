@@ -15,8 +15,10 @@ from . import labels
 from . import colors
 
 # TODO: remove unused title argument / use title argument
+
+
 def summary_plot(shap_values, features=None, feature_names=None, max_display=None, plot_type=None,
-                 color=None, axis_color="#333333", title=None, alpha=1, show=True, sort=True,
+                 color='RdBu', axis_color="#333333", alpha=1, show=True, sort=True,
                  color_bar=True, plot_size="auto", layered_violin_max_num_bins=20, class_names=None,
                  color_bar_label=labels["FEATURE_VALUE"],
                  # depreciated
@@ -59,11 +61,11 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
     if isinstance(shap_values, list):
         multi_class = True
         if plot_type is None:
-            plot_type = "bar" # default for multi-output explanations
+            plot_type = "bar"  # default for multi-output explanations
         assert plot_type == "bar", "Only plot_type = 'bar' is supported for multi-output explanations!"
     else:
         if plot_type is None:
-            plot_type = "dot" # default for single output explanations
+            plot_type = "dot"  # default for single output explanations
         assert len(shap_values.shape) != 1, "Summary plots need a matrix of shap_values, not a vector."
 
     # default color:
@@ -71,7 +73,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
         if plot_type == 'layered_violin':
             color = "coolwarm"
         elif multi_class:
-            color = lambda i: colors.red_blue_circle(i/len(shap_values))
+            def color(i): return colors.red_blue_circle(i/len(shap_values))
         else:
             color = colors.blue_rgb
 
@@ -95,7 +97,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
                     "provided data matrix."
         if num_features - 1 == features.shape[1]:
             assert False, shape_msg + " Perhaps the extra column in the shap_values matrix is the " \
-                          "constant offset? Of so just pass shap_values[:,:-1]."
+                "constant offset? Of so just pass shap_values[:,:-1]."
         else:
             assert num_features == features.shape[1], shape_msg
 
@@ -120,7 +122,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
             return summary_plot(
                 new_shap_values, new_features, new_feature_names,
                 max_display=max_display, plot_type="dot", color=color, axis_color=axis_color,
-                title=title, alpha=alpha, show=show, sort=sort,
+                alpha=alpha, show=show, sort=sort,
                 color_bar=color_bar, plot_size=plot_size, class_names=class_names,
                 color_bar_label="*" + color_bar_label
             )
@@ -261,7 +263,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
                 cvals[cvals_imp > vmax] = vmax
                 cvals[cvals_imp < vmin] = vmin
                 pl.scatter(shaps[np.invert(nan_mask)], pos + ys[np.invert(nan_mask)],
-                           cmap=colors.red_blue, vmin=vmin, vmax=vmax, s=16,
+                           cmap=color, vmin=vmin, vmax=vmax, s=16,
                            c=cvals, alpha=alpha, linewidth=0,
                            zorder=3, rasterized=len(shaps) > 500)
             else:
@@ -398,7 +400,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
             for i in range(nbins - 1, -1, -1):
                 y = ys[i, :] / scale
                 c = pl.get_cmap(color)(i / (
-                        nbins - 1)) if color in pl.cm.datad else color  # if color is a cmap, use it, otherwise use a color
+                    nbins - 1)) if color in pl.cm.datad else color  # if color is a cmap, use it, otherwise use a color
                 pl.fill_between(x_points, pos - y, pos + y, facecolor=c)
         pl.xlim(shap_min, shap_max)
 
@@ -418,7 +420,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
         left_pos = np.zeros(len(feature_inds))
 
         class_inds = np.argsort([-np.abs(shap_values[i]).mean() for i in range(len(shap_values))])
-        for i,ind in enumerate(class_inds):
+        for i, ind in enumerate(class_inds):
             global_shap_values = np.abs(shap_values[ind]).mean(0)
             pl.barh(
                 y_pos, global_shap_values[feature_inds], 0.7, left=left_pos, align='center',
@@ -462,6 +464,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
         pl.xlabel(labels['VALUE'], fontsize=13)
     if show:
         pl.show()
+
 
 def shorten_text(text, length_limit):
     if len(text) > length_limit:
