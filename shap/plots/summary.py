@@ -8,13 +8,12 @@ import numpy as np
 from scipy.stats import gaussian_kde
 try:
     import matplotlib.pyplot as pl
+    import matplotlib as mpl
 except ImportError:
     warnings.warn("matplotlib could not be loaded!")
     pass
 from . import labels
 from . import colors
-
-# TODO: remove unused title argument / use title argument
 
 
 def summary_plot(shap_values, features=None, feature_names=None, max_display=None, plot_type=None,
@@ -22,7 +21,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
                  color_bar=True, plot_size="auto", layered_violin_max_num_bins=20, class_names=None,
                  color_bar_label=labels["FEATURE_VALUE"],
                  # depreciated
-                 auto_size_plot=None):
+                 auto_size_plot=None, vmin=None, vmax=None, color_threshold=0.8, colored_feature=True, s=16):
     """Create a SHAP summary plot, colored by feature values when they are provided.
 
     Parameters
@@ -215,7 +214,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
             if values is not None:
                 values = values[inds]
             shaps = shaps[inds]
-            colored_feature = True
+            # colored_feature = True
             try:
                 values = np.array(values, dtype=np.float64)  # make sure this can be numeric
             except:
@@ -239,8 +238,10 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
 
             if features is not None and colored_feature:
                 # trim the color range, but prevent the color range from collapsing
-                vmin = np.nanpercentile(values, 5)
-                vmax = np.nanpercentile(values, 95)
+                if vmin is None:
+                    vmin = np.nanpercentile(values, 5)
+                if vmax is None:
+                    vmax = np.nanpercentile(values, 95)
                 if vmin == vmax:
                     vmin = np.nanpercentile(values, 1)
                     vmax = np.nanpercentile(values, 99)
@@ -253,7 +254,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
                 # plot the nan values in the interaction feature as grey
                 nan_mask = np.isnan(values)
                 pl.scatter(shaps[nan_mask], pos + ys[nan_mask], color="#777777", vmin=vmin,
-                           vmax=vmax, s=16, alpha=alpha, linewidth=0,
+                           vmax=vmax, s=s, alpha=alpha, linewidth=0,
                            zorder=3, rasterized=len(shaps) > 500)
 
                 # plot the non-nan values colored by the trimmed feature value
@@ -262,14 +263,18 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
                 cvals_imp[np.isnan(cvals)] = (vmin + vmax) / 2.0
                 cvals[cvals_imp > vmax] = vmax
                 cvals[cvals_imp < vmin] = vmin
+
+                if color_threshold is not None:
+                    cvals[cvals_imp > color_threshold*vmax] = vmax
+                    cvals[cvals_imp < color_threshold*vmin] = vmin
+
                 pl.scatter(shaps[np.invert(nan_mask)], pos + ys[np.invert(nan_mask)],
-                           cmap=color, vmin=vmin, vmax=vmax, s=16,
+                           cmap=color, vmin=vmin, vmax=vmax, s=s,
                            c=cvals, alpha=alpha, linewidth=0,
                            zorder=3, rasterized=len(shaps) > 500)
             else:
-
-                pl.scatter(shaps, pos + ys, s=16, alpha=alpha, linewidth=0, zorder=3,
-                           color=color if colored_feature else "#777777", rasterized=len(shaps) > 500)
+                pl.scatter(shaps, pos + ys, s=s, alpha=alpha, linewidth=0, zorder=3,
+                           color=color, rasterized=len(shaps) > 500)
 
     elif plot_type == "violin":
         for pos, i in enumerate(feature_order):
@@ -435,7 +440,7 @@ def summary_plot(shap_values, features=None, feature_names=None, max_display=Non
     if color_bar and features is not None and plot_type != "bar" and \
             (plot_type != "layered_violin" or color in pl.cm.datad):
         import matplotlib.cm as cm
-        m = cm.ScalarMappable(cmap=colors.red_blue if plot_type != "layered_violin" else pl.get_cmap(color))
+        m = cm.ScalarMappable(cmap=color if plot_type != "layered_violin" else pl.get_cmap(color))
         m.set_array([0, 1])
         cb = pl.colorbar(m, ticks=[0, 1], aspect=1000)
         cb.set_ticklabels([labels['FEATURE_VALUE_LOW'], labels['FEATURE_VALUE_HIGH']])
